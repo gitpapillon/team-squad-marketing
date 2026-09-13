@@ -1,0 +1,35 @@
+name: instagram-publish
+
+on:
+  schedule:
+    # KST 08:05 · 12:05 · 19:05 (GitHub cron 은 UTC · 몇 분 늦게 돌 수 있음)
+    - cron: "5 23 * * *"
+    - cron: "5 3 * * *"
+    - cron: "5 10 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: instagram-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 발행
+        env:
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IMAGE_BASE_URL: ${{ vars.IMAGE_BASE_URL }}
+        run: python3 scripts/publish.py
+      - name: 발행 기록 커밋
+        run: |
+          git diff --quiet state/ && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: 발행 기록 [skip ci]"
+          git push

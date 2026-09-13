@@ -1,0 +1,12 @@
+name: queue-check
+
+on:
+  pull_request:
+    paths: ["queue/**", "images/**"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/publish.py --check
