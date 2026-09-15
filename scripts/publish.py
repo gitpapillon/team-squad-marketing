@@ -6,7 +6,8 @@
   scripts/publish.py --check    # queue 전체 형식 검사만 (PR 검사용)
 
 queue 파일: queue/<YYYY-MM-DD>-<슬롯>.json  →  {"image": "images/…jpg", "caption": "…"}
-슬롯 시각(KST): 1=08시 · 2=12시 · 3=19시. 24시간 넘게 지난 게시물은 발행하지 않고 건너뛴다.
+슬롯 시각(KST): 1=08시 · 2=12시 · 3=19시. 2시간 넘게 지난 게시물은 발행하지 않고 건너뛴다
+(예약 실행이 늦어 새벽에 올라가는 것을 막는다 — 수동 실행은 --late 로 허용).
 
 환경변수: IG_USER_ID · IG_ACCESS_TOKEN · IMAGE_BASE_URL (이미지 공개 주소의 앞부분)
 """
@@ -26,6 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 KST = timezone(timedelta(hours=9))
 API = "https://graph.instagram.com/v25.0"
 SLOT_HOURS = {1: 8, 2: 12, 3: 19}
+LATE_LIMIT = timedelta(hours=2)
 STATE = ROOT / "state" / "published.json"
 NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})-([123])$")
 
@@ -103,10 +105,11 @@ def main():
     state = json.loads(STATE.read_text(encoding="utf-8"))
     due = [(k, at, post) for k, at, post in posts
            if k not in state and at <= now and not any(b[0] == k for b in bad)]
+    limit = timedelta(hours=24) if "--late" in sys.argv else LATE_LIMIT
     for k, at, _ in due:
-        if at < now - timedelta(hours=24):
-            print(f"⏭ {k}: 24시간 넘게 지나 건너뜀")
-    due = [d for d in due if d[1] >= now - timedelta(hours=24)]
+        if at < now - limit:
+            print(f"⏭ {k}: 예정보다 {limit} 넘게 지나 건너뜀")
+    due = [d for d in due if d[1] >= now - limit]
     if not due:
         print("발행할 게시물 없음")
         return 0

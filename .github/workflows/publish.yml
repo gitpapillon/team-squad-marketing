@@ -1,12 +1,19 @@
 name: instagram-publish
 
 on:
+  # 정시 실행은 Supabase pg_cron 이 workflow_dispatch 로 호출한다(README).
+  # 아래 GitHub 예약은 예비용 — 몇 시간씩 늦게 돌 수 있어, 2시간 넘게 늦은 글은 스크립트가 건너뛴다.
   schedule:
     # KST 08:05 · 12:05 · 19:05 (GitHub cron 은 UTC · 몇 분 늦게 돌 수 있음)
     - cron: "5 23 * * *"
     - cron: "5 3 * * *"
     - cron: "5 10 * * *"
   workflow_dispatch:
+    inputs:
+      late:
+        description: "24시간 안에 놓친 글도 발행 (수동 보충용)"
+        type: boolean
+        default: false
 
 concurrency:
   group: instagram-publish
@@ -25,7 +32,7 @@ jobs:
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IMAGE_BASE_URL: ${{ vars.IMAGE_BASE_URL }}
-        run: python3 scripts/publish.py
+        run: python3 scripts/publish.py ${{ inputs.late && '--late' || '' }}
       - name: 발행 기록 커밋
         run: |
           git diff --quiet state/ && exit 0
